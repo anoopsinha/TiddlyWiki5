@@ -124,7 +124,7 @@ SaverHandler.prototype.initSavers = function(moduleType) {
 	this.savers = [];
 	var self = this;
 	$tw.modules.forEachModuleOfType(moduleType,function(title,module) {
-		if(module.canSave(self)) {
+		if(module.canSave(self)) {			
 			self.savers.push(module.create(self.wiki));
 		}
 	});
@@ -180,7 +180,33 @@ SaverHandler.prototype.saveWiki = function(options) {
 	for(var t=this.savers.length-1; t>=0; t--) {
 		var saver = this.savers[t];
 		if(saver.info.capabilities.indexOf(method) !== -1 && saver.save(text,method,callback,{variables: {filename: variables.filename}})) {
-			this.logger.log("Saving wiki with method",method,"through saver",saver.info.name);
+			this.logger.log("Saving wikis with method",method,"through saver",saver.info.name);
+
+			// save a second time allowing for a file picker
+			(async () => {
+				async function saveFile(text) {
+					// (A) CREATE BLOB OBJECT
+					var myBlob = new Blob([text], {type: "text/html"});
+					
+					// (B) FILE HANDLER & FILE STREAM
+					const fileHandle = await window.showSaveFilePicker({
+						types: [{
+						description: "HTML file",
+						accept: {"text/html": [".html"]}
+						}]
+					});
+					const fileStream = await fileHandle.createWritable();
+					
+					// (C) WRITE FILE
+					await fileStream.write(myBlob);
+					await fileStream.close();
+				}
+
+				// save data to this location as many times as you want. first time will ask the user for permission
+				saveFile(text);
+			})();
+
+
 			return true;
 		}
 	}
